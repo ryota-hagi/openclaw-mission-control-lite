@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenClaw Mission Control (Lite) — ダッシュボード</title>
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#111a33; --panel2:#0f1730; --text:#e8ecff; --muted:#a8b0d6;
+      --line:#22305c; --good:#2ee59d; --warn:#ffcf5a; --bad:#ff5a7a; --accent:#7aa2ff;
+      --chip:#1a2650;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:var(--sans); background:linear-gradient(180deg,#070a14 0%, var(--bg) 35%, #070a14 100%); color:var(--text)}
+    a{color:var(--accent)}
+    .wrap{max-width:1200px; margin:0 auto; padding:20px}
+    header{display:flex; gap:14px; align-items:flex-end; justify-content:space-between; flex-wrap:wrap}
+    h1{margin:0; font-size:20px; letter-spacing:.2px}
+    .sub{color:var(--muted); font-size:12px}
+    .row{display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; margin-top:14px}
+    @media (max-width: 980px){.row{grid-template-columns:1fr}}
+    .card{background:rgba(17,26,51,.85); border:1px solid var(--line); border-radius:12px; padding:14px; box-shadow:0 8px 20px rgba(0,0,0,.25)}
+    .card h2{margin:0 0 10px; font-size:14px; color:#dfe6ff}
+    .toolbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+    button,.btn{background:var(--chip); border:1px solid var(--line); color:var(--text); padding:8px 10px; border-radius:10px; cursor:pointer; font-size:12px}
+    button:hover{border-color:#334482}
+    input,select,textarea{background:var(--panel2); border:1px solid var(--line); color:var(--text); padding:8px 10px; border-radius:10px; font-size:12px; outline:none}
+    input:focus,textarea:focus{border-color:#3b57b8}
+    textarea{width:100%; min-height:80px; font-family:var(--mono)}
+    .grid3{display:grid; grid-template-columns: repeat(3, 1fr); gap:10px}
+    @media (max-width: 980px){.grid3{grid-template-columns:1fr}}
+    .col{background:rgba(15,23,48,.7); border:1px dashed rgba(34,48,92,.9); border-radius:12px; padding:10px}
+    .col h3{margin:0 0 8px; font-size:12px; color:var(--muted); display:flex; justify-content:space-between; align-items:center}
+    .pill{font-family:var(--mono); font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); background:rgba(26,38,80,.7); color:var(--muted)}
+    .task{border:1px solid var(--line); background:rgba(17,26,51,.65); border-radius:10px; padding:10px; margin:8px 0}
+    .task .top{display:flex; justify-content:space-between; gap:10px; align-items:flex-start}
+    .task b{font-size:12px}
+    .task .meta{color:var(--muted); font-size:11px; margin-top:6px; display:flex; gap:8px; flex-wrap:wrap}
+    .chip{background:rgba(26,38,80,.8); border:1px solid var(--line); border-radius:999px; padding:2px 8px; font-size:11px; color:var(--muted)}
+    .tag-good{border-color:rgba(46,229,157,.35); color:#bffbe6}
+    .tag-warn{border-color:rgba(255,207,90,.35); color:#fff0c2}
+    .tag-bad{border-color:rgba(255,90,122,.35); color:#ffd0da}
+    .mono{font-family:var(--mono)}
+    .kpi{display:grid; grid-template-columns:repeat(4,1fr); gap:10px}
+    @media (max-width: 980px){.kpi{grid-template-columns:repeat(2,1fr)}}
+    .k{background:rgba(15,23,48,.7); border:1px solid var(--line); border-radius:12px; padding:10px}
+    .k .n{font-size:18px; font-family:var(--mono)}
+    .k .l{font-size:11px; color:var(--muted)}
+    table{width:100%; border-collapse:collapse; font-size:12px}
+    th,td{border-bottom:1px solid rgba(34,48,92,.7); padding:8px 6px; text-align:left}
+    th{color:var(--muted); font-weight:600}
+    .right{display:flex; justify-content:flex-end}
+    .small{font-size:11px; color:var(--muted)}
+    .log{white-space:pre-wrap; font-family:var(--mono); font-size:11px; line-height:1.45; background:rgba(10,14,30,.7); border:1px solid var(--line); border-radius:12px; padding:10px; max-height:260px; overflow:auto}
+    .footer{margin-top:14px; color:var(--muted); font-size:11px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>OpenClaw Mission Control (Lite)</h1>
+        <div class="sub">静的HTML版 / ローカルで開いて運用。タスク・cron・ログを「見える化」する最小構成。</div>
+      </div>
+      <div class="toolbar">
+        <button id="btnExport">エクスポート（JSON）</button>
+        <label class="btn" for="importFile">インポート（JSON）</label>
+        <input id="importFile" type="file" accept="application/json" style="display:none" />
+        <button id="btnReset">初期データへ戻す</button>
+      </div>
+    </header>
+
+    <div class="row">
+      <section class="card">
+        <h2>今日の状況</h2>
+        <div class="kpi" id="kpi"></div>
+        <div class="footer">※データはこのHTMLのローカルストレージに保存されます（PC内）。</div>
+      </section>
+
+      <section class="card">
+        <h2>クイック入力（タスク追加）</h2>
+        <div class="toolbar" style="margin-bottom:8px">
+          <input id="tTitle" placeholder="タスク名" style="flex:1; min-width:220px" />
+          <select id="tAssignee">
+            <option value="AI">担当: AI</option>
+            <option value="Ryota">担当: Ryota</option>
+          </select>
+          <select id="tStatus">
+            <option value="todo">Todo</option>
+            <option value="doing">In Progress</option>
+            <option value="done">Done</option>
+          </select>
+          <select id="tPriority">
+            <option value="P1">優先: P1</option>
+            <option value="P2" selected>優先: P2</option>
+            <option value="P3">優先: P3</option>
+          </select>
+          <button id="btnAdd">追加</button>
+        </div>
+        <textarea id="tNote" placeholder="メモ（任意）：背景・完了条件・リンクなど"></textarea>
+        <div class="small" style="margin-top:8px">運用ルール案：P1は「今日やる」。P2は「今週」。P3は「そのうち」。Doneは毎週アーカイブ。</div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>タスクボード</h2>
+      <div class="grid3" id="board"></div>
+    </section>
+
+    <div class="row">
+      <section class="card">
+        <h2>Cron（定期実行）一覧（手動管理）</h2>
+        <div class="toolbar" style="margin-bottom:8px">
+          <input id="cName" placeholder="ジョブ名" style="flex:1; min-width:220px" />
+          <input id="cSchedule" placeholder="スケジュール（例: 0 9 1 * * / Asia/Tokyo）" style="flex:1; min-width:260px" />
+          <select id="cEnabled">
+            <option value="true">有効</option>
+            <option value="false">無効</option>
+          </select>
+          <button id="btnAddCron">追加</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>ジョブ</th>
+              <th>スケジュール</th>
+              <th>状態</th>
+              <th>最終実行</th>
+              <th class="right">操作</th>
+            </tr>
+          </thead>
+          <tbody id="cronTable"></tbody>
+        </table>
+        <div class="small" style="margin-top:8px">※本番のcronはOpenClaw側で動きます。ここは「見える化／運用メモ」用。</div>
+      </section>
+
+      <section class="card">
+        <h2>実行ログ（手動貼り付け）</h2>
+        <div class="small">activity.mdやcron結果の抜粋を貼る。週次でクリアしてもOK。</div>
+        <div class="toolbar" style="margin:8px 0">
+          <button id="btnPasteExample">例を入れる</button>
+          <button id="btnClearLog">ログをクリア</button>
+        </div>
+        <div class="log" id="runLog"></div>
+      </section>
+    </div>
+
+    <div class="footer">
+      v1 / 2026-02-20 — OpenClaw Mission Control (Lite).  
+      改善案：①cronをAPI/CLIから自動取得 ②activity.mdから自動サマリ生成（cron/スクリプト）③検索。
+    </div>
+  </div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'openclaw_mission_control_lite_v1';
+
+  const seed = () => ({
+    tasks: [
+      {id: rid(), title:'サンプル：申請書 最終チェック（デモ）', assignee:'Ryota', status:'todo', priority:'P1', note:'デモタスクです。実データは入れないでください。', createdAt: nowIso()},
+      {id: rid(), title:'サンプル：月次更新cron 実行確認（デモ）', assignee:'AI', status:'todo', priority:'P2', note:'デモタスクです。', createdAt: nowIso()},
+      {id: rid(), title:'Mission Control (Lite) 運用ルール決め', assignee:'Ryota', status:'doing', priority:'P2', note:'P1/P2/P3運用、Doneの週次アーカイブ、ログ運用。', createdAt: nowIso()},
+    ],
+    crons: [
+      {id: rid(), name:'SAMPLE_monthly_job', schedule:'0 9 1 * * (Asia/Tokyo)', enabled:true, lastRun:'—'},
+    ],
+    runLog: ''
+  });
+
+  function nowIso(){ return new Date().toISOString(); }
+  function rid(){ return Math.random().toString(16).slice(2) + '-' + Date.now().toString(16); }
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return seed();
+      const data = JSON.parse(raw);
+      if(!data.tasks || !data.crons) return seed();
+      return data;
+    } catch { return seed(); }
+  }
+  function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state,null,2)); render(); }
+
+  let state = load();
+
+  // Elements
+  const kpiEl = document.getElementById('kpi');
+  const boardEl = document.getElementById('board');
+  const cronTableEl = document.getElementById('cronTable');
+  const runLogEl = document.getElementById('runLog');
+
+  // Task inputs
+  const tTitle = document.getElementById('tTitle');
+  const tAssignee = document.getElementById('tAssignee');
+  const tStatus = document.getElementById('tStatus');
+  const tPriority = document.getElementById('tPriority');
+  const tNote = document.getElementById('tNote');
+
+  document.getElementById('btnAdd').addEventListener('click', () => {
+    const title = (tTitle.value||'').trim();
+    if(!title) return alert('タスク名を入れて');
+    state.tasks.unshift({
+      id: rid(),
+      title,
+      assignee: tAssignee.value,
+      status: tStatus.value,
+      priority: tPriority.value,
+      note: (tNote.value||'').trim(),
+      createdAt: nowIso()
+    });
+    tTitle.value=''; tNote.value='';
+    save();
+  });
+
+  function statusLabel(s){
+    if(s==='todo') return 'Todo';
+    if(s==='doing') return 'In Progress';
+    return 'Done';
+  }
+  function statusColor(s){
+    if(s==='todo') return 'tag-warn';
+    if(s==='doing') return 'tag-good';
+    return 'tag-bad';
+  }
+
+  function renderKpi(){
+    const total = state.tasks.length;
+    const todo = state.tasks.filter(t=>t.status==='todo').length;
+    const doing = state.tasks.filter(t=>t.status==='doing').length;
+    const done = state.tasks.filter(t=>t.status==='done').length;
+    const ai = state.tasks.filter(t=>t.assignee==='AI' && t.status!=='done').length;
+
+    kpiEl.innerHTML = '';
+    const items = [
+      {n: total, l: '全タスク'},
+      {n: todo, l: 'Todo'},
+      {n: doing, l: 'In Progress'},
+      {n: done, l: 'Done'},
+    ];
+    items.forEach(x=>{
+      const d=document.createElement('div');
+      d.className='k';
+      d.innerHTML = `<div class="n">${x.n}</div><div class="l">${x.l}</div>`;
+      kpiEl.appendChild(d);
+    });
+  }
+
+  function renderBoard(){
+    const cols = [
+      {key:'todo', name:'Todo'},
+      {key:'doing', name:'In Progress'},
+      {key:'done', name:'Done'},
+    ];
+    boardEl.innerHTML='';
+
+    cols.forEach(col=>{
+      const wrap=document.createElement('div');
+      wrap.className='col';
+      const tasks = state.tasks.filter(t=>t.status===col.key);
+      wrap.innerHTML = `<h3>${col.name} <span class="pill">${tasks.length}</span></h3>`;
+
+      tasks.forEach(t=>{
+        const el=document.createElement('div');
+        el.className='task';
+        el.innerHTML = `
+          <div class="top">
+            <div>
+              <b>${escapeHtml(t.title)}</b>
+              <div class="meta">
+                <span class="chip ${statusColor(t.status)}">${statusLabel(t.status)}</span>
+                <span class="chip">担当:${escapeHtml(t.assignee)}</span>
+                <span class="chip">${escapeHtml(t.priority)}</span>
+              </div>
+            </div>
+            <div class="toolbar" style="gap:6px">
+              ${col.key!=='todo' ? `<button data-act="back" data-id="${t.id}">←</button>`:''}
+              ${col.key!=='done' ? `<button data-act="next" data-id="${t.id}">→</button>`:''}
+              <button data-act="del" data-id="${t.id}">削除</button>
+            </div>
+          </div>
+          ${t.note ? `<div class="small" style="margin-top:8px">${escapeHtml(t.note)}</div>`:''}
+        `;
+        wrap.appendChild(el);
+      });
+
+      boardEl.appendChild(wrap);
+    });
+
+    boardEl.querySelectorAll('button[data-act]').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const id = btn.getAttribute('data-id');
+        const act = btn.getAttribute('data-act');
+        const t = state.tasks.find(x=>x.id===id);
+        if(!t) return;
+        if(act==='del'){
+          if(!confirm('削除する？')) return;
+          state.tasks = state.tasks.filter(x=>x.id!==id);
+        }
+        if(act==='next') t.status = (t.status==='todo') ? 'doing' : 'done';
+        if(act==='back') t.status = (t.status==='done') ? 'doing' : 'todo';
+        save();
+      })
+    });
+  }
+
+  // Cron
+  const cName=document.getElementById('cName');
+  const cSchedule=document.getElementById('cSchedule');
+  const cEnabled=document.getElementById('cEnabled');
+  document.getElementById('btnAddCron').addEventListener('click', ()=>{
+    const name=(cName.value||'').trim();
+    const schedule=(cSchedule.value||'').trim();
+    if(!name || !schedule) return alert('ジョブ名とスケジュールを入れて');
+    state.crons.unshift({id:rid(), name, schedule, enabled: cEnabled.value==='true', lastRun:'—'});
+    cName.value=''; cSchedule.value='';
+    save();
+  });
+
+  function renderCrons(){
+    cronTableEl.innerHTML='';
+    state.crons.forEach(c=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(c.name)}</td>
+        <td class="mono">${escapeHtml(c.schedule)}</td>
+        <td>${c.enabled ? '<span class="chip tag-good">有効</span>' : '<span class="chip tag-bad">無効</span>'}</td>
+        <td class="mono">${escapeHtml(c.lastRun||'—')}</td>
+        <td class="right">
+          <button data-cact="run" data-id="${c.id}">最終実行を更新</button>
+          <button data-cact="toggle" data-id="${c.id}">${c.enabled?'無効化':'有効化'}</button>
+          <button data-cact="del" data-id="${c.id}">削除</button>
+        </td>
+      `;
+      cronTableEl.appendChild(tr);
+    });
+
+    cronTableEl.querySelectorAll('button[data-cact]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id=btn.getAttribute('data-id');
+        const act=btn.getAttribute('data-cact');
+        const c=state.crons.find(x=>x.id===id);
+        if(!c) return;
+        if(act==='del'){
+          if(!confirm('削除する？')) return;
+          state.crons = state.crons.filter(x=>x.id!==id);
+        }
+        if(act==='toggle') c.enabled = !c.enabled;
+        if(act==='run') c.lastRun = new Date().toLocaleString('ja-JP');
+        save();
+      })
+    });
+  }
+
+  // Run log
+  function renderLog(){
+    runLogEl.textContent = state.runLog || '（ログなし）';
+  }
+  document.getElementById('btnPasteExample').addEventListener('click', ()=>{
+    state.runLog = [
+      '[2026-02-20 18:00] cron: SAMPLE_monthly_job → due: OK',
+      '[YYYY-MM-DD HH:MM] deliverable: (redacted)',
+      '[YYYY-MM-DD HH:MM] note: next improvement',
+    ].join('\n');
+    save();
+  });
+  document.getElementById('btnClearLog').addEventListener('click', ()=>{
+    if(!confirm('ログをクリアする？')) return;
+    state.runLog='';
+    save();
+  });
+
+  // Export / import
+  document.getElementById('btnExport').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download = 'openclaw_mission_control_lite_v1.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('importFile').addEventListener('change', async (e)=>{
+    const file=e.target.files && e.target.files[0];
+    if(!file) return;
+    const txt=await file.text();
+    try{
+      const data=JSON.parse(txt);
+      if(!data.tasks || !data.crons) throw new Error('invalid');
+      state=data;
+      save();
+    } catch {
+      alert('JSONが不正');
+    }
+  });
+
+  document.getElementById('btnReset').addEventListener('click', ()=>{
+    if(!confirm('初期データへ戻す？')) return;
+    state = seed();
+    save();
+  });
+
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'",'&#39;');
+  }
+
+  function render(){
+    renderKpi();
+    renderBoard();
+    renderCrons();
+    renderLog();
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
