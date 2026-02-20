@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>OpenClaw Mission Control (Lite) — ダッシュボード</title>
+  <title>OpenClaw Mission Control (Lite) — Tools — ダッシュボード</title>
   <style>
     :root{
       --bg:#0b1020; --panel:#111a33; --panel2:#0f1730; --text:#e8ecff; --muted:#a8b0d6;
@@ -61,12 +61,13 @@
   <div class="wrap">
     <header>
       <div>
-        <h1>OpenClaw Mission Control (Lite)</h1>
+        <h1>OpenClaw Mission Control (Lite) — Tools</h1>
         <div class="sub">静的HTML版 / ローカルで開いて運用。タスク・cron・ログを「見える化」する最小構成。</div>
       </div>
       <div class="toolbar">
         <button id="btnPrivate">成果物（Private）</button>
         <button id="btnPrivateCfg">Private設定</button>
+        <a class="btn" href="./task.html">タスク（シンプル）</a>
         <button id="btnExport">エクスポート（JSON）</button>
         <label class="btn" for="importFile">インポート（JSON）</label>
         <input id="importFile" type="file" accept="application/json" style="display:none" />
@@ -172,7 +173,7 @@
       <div class="small">保存すると、上部の「成果物（Private）」から開けます。</div>
     </div>
     <div class="footer">
-      v1 / 2026-02-20 — OpenClaw Mission Control (Lite).  
+      v1 / 2026-02-20 — OpenClaw Mission Control (Lite) — Tools.  
       改善案：①cronをAPI/CLIから自動取得 ②activity.mdから自動サマリ生成（cron/スクリプト）③検索。
     </div>
   </div>
