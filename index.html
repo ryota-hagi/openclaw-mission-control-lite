@@ -65,6 +65,8 @@
         <div class="sub">静的HTML版 / ローカルで開いて運用。タスク・cron・ログを「見える化」する最小構成。</div>
       </div>
       <div class="toolbar">
+        <button id="btnPrivate">成果物（Private）</button>
+        <button id="btnPrivateCfg">Private設定</button>
         <button id="btnExport">エクスポート（JSON）</button>
         <label class="btn" for="importFile">インポート（JSON）</label>
         <input id="importFile" type="file" accept="application/json" style="display:none" />
@@ -76,7 +78,18 @@
       <section class="card">
         <h2>今日の状況</h2>
         <div class="kpi" id="kpi"></div>
-        <div class="footer">※データはこのHTMLのローカルストレージに保存されます（PC内）。</div>
+    
+    <div class="card" id="privateCard" style="display:none; margin-top:14px">
+      <h2>成果物（Private）設定</h2>
+      <div class="small">※ここに入れるURLはTailscale内でのみ開ける想定。Publicページに機密データは保存しません（ブラウザのローカルストレージのみ）。</div>
+      <div class="toolbar" style="margin-top:10px">
+        <input id="privateUrl" placeholder="例: http://100.xxx.xxx.xxx:8787/" style="flex:1; min-width:260px" />
+        <button id="btnPrivateSave">保存</button>
+        <button id="btnPrivateClear">クリア</button>
+      </div>
+      <div class="small">保存すると、上部の「成果物（Private）」から開けます。</div>
+    </div>
+    <div class="footer">※データはこのHTMLのローカルストレージに保存されます（PC内）。</div>
       </section>
 
       <section class="card">
@@ -147,6 +160,17 @@
       </section>
     </div>
 
+
+    <div class="card" id="privateCard" style="display:none; margin-top:14px">
+      <h2>成果物（Private）設定</h2>
+      <div class="small">※ここに入れるURLはTailscale内でのみ開ける想定。Publicページに機密データは保存しません（ブラウザのローカルストレージのみ）。</div>
+      <div class="toolbar" style="margin-top:10px">
+        <input id="privateUrl" placeholder="例: http://100.xxx.xxx.xxx:8787/" style="flex:1; min-width:260px" />
+        <button id="btnPrivateSave">保存</button>
+        <button id="btnPrivateClear">クリア</button>
+      </div>
+      <div class="small">保存すると、上部の「成果物（Private）」から開けます。</div>
+    </div>
     <div class="footer">
       v1 / 2026-02-20 — OpenClaw Mission Control (Lite).  
       改善案：①cronをAPI/CLIから自動取得 ②activity.mdから自動サマリ生成（cron/スクリプト）③検索。
@@ -372,7 +396,69 @@
   });
 
   // Export / import
-  document.getElementById('btnExport').addEventListener('click', ()=>{
+  
+  // Private deliverables link (Tailscale-only)
+  const PRIVATE_KEY = 'mc_private_base_url';
+  const privateCard = document.getElementById('privateCard');
+  const privateUrl = document.getElementById('privateUrl');
+  const btnPrivate = document.getElementById('btnPrivate');
+  const btnPrivateCfg = document.getElementById('btnPrivateCfg');
+  const btnPrivateSave = document.getElementById('btnPrivateSave');
+  const btnPrivateClear = document.getElementById('btnPrivateClear');
+
+  function getPrivateUrl(){
+    return (localStorage.getItem(PRIVATE_KEY) || '').trim();
+  }
+  function setPrivateUrl(v){
+    localStorage.setItem(PRIVATE_KEY, (v||'').trim());
+  }
+  function togglePrivateCard(show){
+    privateCard.style.display = show ? 'block' : 'none';
+  }
+  function normalizeUrl(u){
+    u=(u||'').trim();
+    if(!u) return '';
+    if(!/^https?:\/\//i.test(u)) u='http://'+u;
+    // ensure trailing slash
+    if(!u.endsWith('/')) u += '/';
+    return u;
+  }
+
+  // init
+  privateUrl.value = getPrivateUrl();
+
+  btnPrivate.addEventListener('click', ()=>{
+    const u = getPrivateUrl();
+    if(!u){
+      togglePrivateCard(true);
+      privateUrl.focus();
+      alert('PrivateのURLを設定してね（例: http://100.x.x.x:8787/）');
+      return;
+    }
+    window.open(u, '_blank', 'noopener,noreferrer');
+  });
+
+  btnPrivateCfg.addEventListener('click', ()=>{
+    togglePrivateCard(privateCard.style.display === 'none');
+    privateUrl.value = getPrivateUrl();
+    privateUrl.focus();
+  });
+
+  btnPrivateSave.addEventListener('click', ()=>{
+    const u = normalizeUrl(privateUrl.value);
+    if(!u){ alert('URLを入れて'); return; }
+    setPrivateUrl(u);
+    privateUrl.value = u;
+    alert('保存した。上の「成果物（Private）」から開ける');
+  });
+
+  btnPrivateClear.addEventListener('click', ()=>{
+    if(!confirm('Private URLをクリアする？')) return;
+    setPrivateUrl('');
+    privateUrl.value='';
+  });
+
+document.getElementById('btnExport').addEventListener('click', ()=>{
     const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a=document.createElement('a');
